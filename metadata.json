@@ -1,6 +1,6 @@
 {
-  "itemDisplayName": "Deploy a simple Windows VM in West US",
-  "description": "This template allows you to deploy a simple Windows VM using a few different options for the Windows version, using the latest patched version. This will deploy in West US on a D1 VM Size.",
+  "itemDisplayName": "Deploy a simple Windows VM in West Europe",
+  "description": "This template allows you to deploy a simple Windows VM using a few different options for the Windows version, using the latest patched version. This will deploy in West Europe on a D1 size.",
   "summary": "This template takes a minimum amount of parameters and deploys a Windows VM, using the latest patched version.",
   "githubUsername": "decod123",
   "dateUpdated": "2016-04-27"
