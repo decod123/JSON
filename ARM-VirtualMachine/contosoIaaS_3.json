@@ -1,0 +1,168 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountType": {
+      "type": "array",
+      "defaultValue": [ "Standard_LRS", "Standard_LRS", "Standard_GRS" ]
+    },
+    "storageAccountNamePrefix": {
+      "type": "string",
+      "defaultValue": "contoso",
+      "minLength": 1
+    },
+    "vNetPrivateName": {
+      "type": "string",
+      "defaultValue": "contoso-vnet-private",
+      "minlength": 1
+    },
+    "vNetAzureName": {
+      "type": "string",
+      "defaultValue": "contoso-vnet-azure",
+      "minlength": 1
+    }
+  },
+  "variables": {
+    "vNetPrivatePrefix": "172.16.0.0/16",
+    "vNetPrivateSubnet1Name": "private-subnet-1",
+    "vNetPrivateSubnet1Prefix": "172.16.1.0/24",
+    "vNetPrivateSubnet2Name": "private-subnet-2",
+    "vNetPrivateSubnet2Prefix": "172.16.2.0/24",
+    "vNetAzurePrefix": "10.0.0.0/16",
+    "vNetAzureSubnet1Name": "azure-subnet-1",
+    "vNetAzureSubnet1Prefix": "10.0.1.0/24",
+    "vNetAzureSubnet2Name": "azure-subnet-2",
+    "vNetAzureSubnet2Prefix": "10.0.2.0/24",
+    "vNet1tovNet2PeeringName": "[concat(parameters('vNetPrivateName'), '-', parameters('vNetAzureName'))]",
+    "vNet2tovNet1PeeringName": "[concat(parameters('vNetAzureName'), '-', parameters('vNetPrivateName'))]"
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('storageAccountNamePrefix'),copyIndex(),uniqueString(resourceGroup().id))]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-01-01",
+      "copy": {
+        "count": "[length(parameters('storageAccountType'))]",
+        "name": "storageCopy"
+      },
+      "sku": {
+        "name": "[parameters('storageAccountType')[copyIndex()]]"
+      },
+      "dependsOn": [],
+      "tags": {
+        "displayName": "[concat(parameters('storageAccountNamePrefix'),copyIndex(),uniqueString(resourceGroup().id))]"
+      },
+      "kind": "Storage"
+    },
+    {
+      "name": "[parameters('vNetPrivateName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "[parameters('vNetPrivateName')]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vnetPrivatePrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('vNetPrivateSubnet1Name' )]",
+            "properties": {
+              "addressPrefix": "[variables('vNetPrivateSubnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[variables('vNetPrivateSubnet2Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetPrivateSubnet2Prefix')]"
+            }
+          }
+        ]
+      },
+      "resources": [
+        {
+          "name": "[variables('vNet1tovNet2PeeringName')]",
+          "type": "virtualNetworkPeerings",
+          "apiVersion": "2017-03-01",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Network/virtualNetworks/', parameters('vNetPrivateName'))]",
+            "[concat('Microsoft.Network/virtualNetworks/', parameters('vNetAzureName'))]"
+          ],
+          "comments": "This is the peering from the private vNet to the azure vNet",
+          "properties": {
+            "allowVirtualNetworkAccess": "true",
+            "allowForwardedTraffic": "false",
+            "allowGatewayTransit": "false",
+            "useRemoteGateways": "false",
+            "remoteVirtualNetwork": {
+              "id": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vNetAzureName'))]"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "[parameters('vNetAzureName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "[parameters('vNetAzureName')]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vNetAzurePrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('vNetAzureSubnet1Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetAzureSubnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[variables('vNetAzureSubnet2Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetAzureSubnet2Prefix')]"
+            }
+          }
+        ]
+      },
+      "resources": [
+        {
+          "name": "[variables('vNet2tovNet1PeeringName')]",
+          "type": "virtualNetworkPeerings",
+          "apiVersion": "2017-03-01",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Network/virtualNetworks/', parameters('vNetPrivateName'))]",
+            "[concat('Microsoft.Network/virtualNetworks/', parameters('vNetAzureName'))]"
+          ],
+          "comments": "This is the peering from the azure vNet to the private vNet",
+          "properties": {
+            "allowVirtualNetworkAccess": "true",
+            "allowForwardedTraffic": "false",
+            "allowGatewayTransit": "false",
+            "useRemoteGateways": "false",
+            "remoteVirtualNetwork": {
+              "id": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vNetPrivateName'))]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+    "outputs": {
+
+    }
+    }
