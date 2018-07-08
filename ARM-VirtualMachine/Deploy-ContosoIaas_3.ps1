@@ -1,14 +1,11 @@
-﻿### Define Deployment Variables
-{
-$location = '[resource group location]'
-$resourceGroupName = '[resource group name]'
-$resourceDeploymentName = 'contoso-iaas-deployment'
-$templatePath = $env:SystemDrive + '\Users\LabUser\Documents\HOL_Lab_Files\3_Deploying_Virtual_Machines'
-$templateFile = 'contosoIaaS_3.json'
 $template = $templatePath + '\' + $templateFile
 $password = "C0nts0sP@55"
 $securePassword = $password | ConvertTo-SecureString -AsPlainText -Force
+$additionalParameters = New-Object -TypeName Hashtable
+$additionalParameters['vmPrivateAdminPassword'] = $securePassword
 }
+
+
 
 ### Deploy Resources
 {
@@ -17,5 +14,23 @@ New-AzureRmResourceGroupDeployment `
     -Name $resourceDeploymentName `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $template `
+    @additionalParameters `
     -Verbose -Force
 }
+
+
+<#
+
+In the Define Deployment Variables section, replace [resource group location] with southcentralus 
+In the Define Deployment Variables section, replace [resource group name] with rg139860
+ 
+additional parameters:
+$additionalParameters = New-Object -TypeName Hashtable
+$additionalParameters['vmPrivateAdminPassword'] = $securePassword
+
+add:
+@additionalParameters `
+
+#>
+
+Add-AzureRmAccount
