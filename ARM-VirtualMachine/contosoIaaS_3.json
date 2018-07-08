@@ -20,6 +20,34 @@
       "type": "string",
       "defaultValue": "contoso-vnet-azure",
       "minlength": 1
+    },
+    "vmPrivateName": {
+      "type": "string",
+      "defaultValue": "vmPrivate",
+      "minLength": 1
+    },
+    "vmPrivateAdminUserName": {
+      "type": "string",
+      "defaultValue": "vmAdmin",
+      "minLength": 1
+    },
+    "vmPrivateAdminPassword": {
+      "type": "securestring"
+    },
+    "vmPrivateWindowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2016-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter",
+        "2016-Datacenter"
+      ]
+    },
+    "vmPrivatePublicIPDnsName": {
+      "type": "string",
+      "defaultValue": "contoso-vm",
+      "minLength": 1
     }
   },
   "variables": {
@@ -34,7 +62,16 @@
     "vNetAzureSubnet2Name": "azure-subnet-2",
     "vNetAzureSubnet2Prefix": "10.0.2.0/24",
     "vNet1tovNet2PeeringName": "[concat(parameters('vNetPrivateName'), '-', parameters('vNetAzureName'))]",
-    "vNet2tovNet1PeeringName": "[concat(parameters('vNetAzureName'), '-', parameters('vNetPrivateName'))]"
+    "vNet2tovNet1PeeringName": "[concat(parameters('vNetAzureName'), '-', parameters('vNetPrivateName'))]",
+    "vmPrivateImagePublisher": "MicrosoftWindowsServer",
+    "vmPrivateImageOffer": "WindowsServer",
+    "vmPrivateOSDiskName": "vmPrivateOSDisk",
+    "vmPrivateVmSize": "Standard_D2_v2",
+    "vmPrivateVnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetPrivateName'))]",
+    "vmPrivateSubnetRef": "[concat(variables('vmPrivateVnetID'), '/subnets/', variables('vNetPrivateSubnet1Name' ))]",
+    "vmPrivateStorageAccountContainerName": "vhds",
+    "vmPrivateNicName": "[concat(parameters('vmPrivateName'), '-', 'nic-0')]",
+    "vmPrivatePublicIPName": "vmPrivatePublicIP"
   },
   "resources": [
     {
@@ -160,6 +197,97 @@
           }
         }
       ]
+    },
+    {
+      "name": "[variables('vmPrivateNicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetPrivateName'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('vmPrivatePublicIPName'))]"
+      ],
+      "tags": {
+        "displayName": "[variables('vmPrivateNicName')]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('vmPrivateSubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('vmPrivatePublicIPName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('vmPrivateName')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "storageCopy",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('vmPrivateNicName'))]"
+      ],
+      "tags": {
+        "displayName": "vmPrivate"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmPrivateVmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmPrivateName')]",
+          "adminUsername": "[parameters('vmPrivateAdminUsername')]",
+          "adminPassword": "[parameters('vmPrivateAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('vmPrivateImagePublisher')]",
+            "offer": "[variables('vmPrivateImageOffer')]",
+            "sku": "[parameters('vmPrivateWindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "vmPrivateOSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', concat(parameters('storageAccountNamePrefix'),'0',uniqueString(resourceGroup().id))), '2016-01-01').primaryEndpoints.blob, variables('vmPrivateStorageAccountContainerName'), '/', variables('vmPrivateOSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('vmPrivateNicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('vmPrivatePublicIPName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "vmPrivatePublicIP"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[concat(parameters('vmPrivatePublicIPDnsName'),'-',uniqueString(resourceGroup().id))]"
+        }
+      }
     }
   ],
     "outputs": {
